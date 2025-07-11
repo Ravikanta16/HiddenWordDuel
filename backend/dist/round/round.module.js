@@ -16,7 +16,8 @@ exports.RoundModule = RoundModule;
 exports.RoundModule = RoundModule = __decorate([
     (0, common_1.Module)({
         providers: [round_service_1.RoundService],
-        controllers: [round_controller_1.RoundController]
+        controllers: [round_controller_1.RoundController],
+        exports: [round_service_1.RoundService],
     })
 ], RoundModule);
 //# sourceMappingURL=round.module.js.map

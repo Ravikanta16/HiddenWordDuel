@@ -51,6 +51,9 @@ let PlayerService = class PlayerService {
             where: { id },
         });
     }
+    async findAllForTesting() {
+        return this.playerRepository.find();
+    }
 };
 exports.PlayerService = PlayerService;
 exports.PlayerService = PlayerService = __decorate([

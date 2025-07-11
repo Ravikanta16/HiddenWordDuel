@@ -4,6 +4,7 @@ import { RoundController } from './round.controller';
 
 @Module({
   providers: [RoundService],
-  controllers: [RoundController]
+  controllers: [RoundController],
+  exports: [RoundService],
 })
 export class RoundModule {}

@@ -7,4 +7,5 @@ export declare class PlayerService {
     create(createPlayerDto: CreatePlayerDto): Promise<Player>;
     findOne(username: string): Promise<Player | null>;
     findById(id: string): Promise<Player | null>;
+    findAllForTesting(): Promise<Player[]>;
 }

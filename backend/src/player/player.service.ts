@@ -49,4 +49,8 @@ export class PlayerService {
       where: { id },
     });
   }
+
+  async findAllForTesting(): Promise<Player[]> {
+    return this.playerRepository.find();
+  }
 }
