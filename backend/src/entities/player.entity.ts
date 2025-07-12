@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, BeforeInsert } from 'typeorm';
-import * as bcrypt from 'bcrypt';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, ManyToMany } from 'typeorm';
+import { Guess } from './guess.entity';
+import { Match } from './match.entity';
 
 @Entity()
 export class Player {
@@ -20,4 +21,11 @@ export class Player {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @OneToMany(() => Guess, guess => guess.player)
+  guesses: Guess[];
+
+  // A player can be in many matches
+  @ManyToMany(() => Match, match => match.players)
+  matches: Match[];
 } 

@@ -11,13 +11,14 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Match = void 0;
 const typeorm_1 = require("typeorm");
+const player_entity_1 = require("./player.entity");
+const round_entity_1 = require("./round.entity");
 let Match = class Match {
     id;
-    player1Id;
-    player2Id;
-    score1;
-    score2;
     status;
+    players;
+    rounds;
+    winnerId;
     createdAt;
     updatedAt;
 };
@@ -27,25 +28,22 @@ __decorate([
     __metadata("design:type", String)
 ], Match.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", String)
-], Match.prototype, "player1Id", void 0);
-__decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", String)
-], Match.prototype, "player2Id", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ default: 0 }),
-    __metadata("design:type", Number)
-], Match.prototype, "score1", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ default: 0 }),
-    __metadata("design:type", Number)
-], Match.prototype, "score2", void 0);
-__decorate([
     (0, typeorm_1.Column)({ type: 'enum', enum: ['ongoing', 'completed'], default: 'ongoing' }),
     __metadata("design:type", String)
 ], Match.prototype, "status", void 0);
+__decorate([
+    (0, typeorm_1.ManyToMany)(() => player_entity_1.Player, player => player.matches),
+    (0, typeorm_1.JoinTable)(),
+    __metadata("design:type", Array)
+], Match.prototype, "players", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => round_entity_1.Round, round => round.match),
+    __metadata("design:type", Array)
+], Match.prototype, "rounds", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
+    __metadata("design:type", Object)
+], Match.prototype, "winnerId", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

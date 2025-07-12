@@ -1,8 +1,9 @@
+import { Player } from './player.entity';
+import { Round } from './round.entity';
 export declare class Guess {
     id: string;
-    roundId: string;
-    playerId: string;
-    guess: string;
-    isCorrect: boolean;
+    player: Player;
+    round: Round;
+    word: string;
     timestamp: Date;
 }

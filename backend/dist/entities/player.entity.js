@@ -11,6 +11,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Player = void 0;
 const typeorm_1 = require("typeorm");
+const guess_entity_1 = require("./guess.entity");
+const match_entity_1 = require("./match.entity");
 let Player = class Player {
     id;
     username;
@@ -18,6 +20,8 @@ let Player = class Player {
     password;
     totalWins;
     createdAt;
+    guesses;
+    matches;
 };
 exports.Player = Player;
 __decorate([
@@ -44,6 +48,14 @@ __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], Player.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => guess_entity_1.Guess, guess => guess.player),
+    __metadata("design:type", Array)
+], Player.prototype, "guesses", void 0);
+__decorate([
+    (0, typeorm_1.ManyToMany)(() => match_entity_1.Match, match => match.players),
+    __metadata("design:type", Array)
+], Player.prototype, "matches", void 0);
 exports.Player = Player = __decorate([
     (0, typeorm_1.Entity)()
 ], Player);

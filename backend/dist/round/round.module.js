@@ -10,11 +10,15 @@ exports.RoundModule = void 0;
 const common_1 = require("@nestjs/common");
 const round_service_1 = require("./round.service");
 const round_controller_1 = require("./round.controller");
+const typeorm_1 = require("@nestjs/typeorm");
+const round_entity_1 = require("../entities/round.entity");
+const game_module_1 = require("../game/game.module");
 let RoundModule = class RoundModule {
 };
 exports.RoundModule = RoundModule;
 exports.RoundModule = RoundModule = __decorate([
     (0, common_1.Module)({
+        imports: [typeorm_1.TypeOrmModule.forFeature([round_entity_1.Round]), (0, common_1.forwardRef)(() => game_module_1.GameModule),],
         providers: [round_service_1.RoundService],
         controllers: [round_controller_1.RoundController],
         exports: [round_service_1.RoundService],

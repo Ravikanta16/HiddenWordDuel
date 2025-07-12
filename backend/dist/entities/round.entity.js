@@ -11,13 +11,17 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Round = void 0;
 const typeorm_1 = require("typeorm");
+const match_entity_1 = require("./match.entity");
+const player_entity_1 = require("./player.entity");
+const guess_entity_1 = require("./guess.entity");
 let Round = class Round {
     id;
-    matchId;
-    word;
-    revealedTiles;
-    winnerId;
-    roundNumber;
+    match;
+    secretWord;
+    revealedLetters;
+    status;
+    winner;
+    guesses;
     createdAt;
     endedAt;
 };
@@ -27,25 +31,29 @@ __decorate([
     __metadata("design:type", String)
 ], Round.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", String)
-], Round.prototype, "matchId", void 0);
+    (0, typeorm_1.ManyToOne)(() => match_entity_1.Match, match => match.rounds),
+    __metadata("design:type", match_entity_1.Match)
+], Round.prototype, "match", void 0);
 __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", String)
-], Round.prototype, "word", void 0);
+], Round.prototype, "secretWord", void 0);
 __decorate([
-    (0, typeorm_1.Column)('boolean', { array: true }),
+    (0, typeorm_1.Column)('integer', { array: true, default: [] }),
     __metadata("design:type", Array)
-], Round.prototype, "revealedTiles", void 0);
+], Round.prototype, "revealedLetters", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: true, type: 'uuid' }),
+    (0, typeorm_1.Column)({ type: 'enum', enum: ['ongoing', 'finished'], default: 'ongoing' }),
+    __metadata("design:type", String)
+], Round.prototype, "status", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => player_entity_1.Player, { nullable: true }),
     __metadata("design:type", Object)
-], Round.prototype, "winnerId", void 0);
+], Round.prototype, "winner", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", Number)
-], Round.prototype, "roundNumber", void 0);
+    (0, typeorm_1.OneToMany)(() => guess_entity_1.Guess, guess => guess.round),
+    __metadata("design:type", Array)
+], Round.prototype, "guesses", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

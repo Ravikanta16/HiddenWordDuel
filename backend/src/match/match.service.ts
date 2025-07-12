@@ -19,12 +19,12 @@ export class MatchService {
     this.logger.log(`Creating match between ${player1.username} and ${player2.username}`);
     
     const newMatch = this.matchRepository.create({
-      player1Id: player1.id,
-      player2Id: player2.id,
+      players: [player1, player2],
       status: 'ongoing',
     });
 
     await this.matchRepository.save(newMatch);
+    this.roundService.createRound(newMatch);
 
     return newMatch;
   }

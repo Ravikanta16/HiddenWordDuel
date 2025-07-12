@@ -11,12 +11,13 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Guess = void 0;
 const typeorm_1 = require("typeorm");
+const player_entity_1 = require("./player.entity");
+const round_entity_1 = require("./round.entity");
 let Guess = class Guess {
     id;
-    roundId;
-    playerId;
-    guess;
-    isCorrect;
+    player;
+    round;
+    word;
     timestamp;
 };
 exports.Guess = Guess;
@@ -25,21 +26,17 @@ __decorate([
     __metadata("design:type", String)
 ], Guess.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", String)
-], Guess.prototype, "roundId", void 0);
+    (0, typeorm_1.ManyToOne)(() => player_entity_1.Player, player => player.guesses),
+    __metadata("design:type", player_entity_1.Player)
+], Guess.prototype, "player", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => round_entity_1.Round, round => round.guesses),
+    __metadata("design:type", round_entity_1.Round)
+], Guess.prototype, "round", void 0);
 __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", String)
-], Guess.prototype, "playerId", void 0);
-__decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", String)
-], Guess.prototype, "guess", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ default: false }),
-    __metadata("design:type", Boolean)
-], Guess.prototype, "isCorrect", void 0);
+], Guess.prototype, "word", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

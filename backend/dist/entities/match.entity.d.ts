@@ -1,10 +1,11 @@
+import { Player } from './player.entity';
+import { Round } from './round.entity';
 export declare class Match {
     id: string;
-    player1Id: string;
-    player2Id: string;
-    score1: number;
-    score2: number;
     status: 'ongoing' | 'completed';
+    players: Player[];
+    rounds: Round[];
+    winnerId: string | null;
     createdAt: Date;
     updatedAt: Date;
 }

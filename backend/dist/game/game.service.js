@@ -13,22 +13,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameService = void 0;
 const common_1 = require("@nestjs/common");
 const match_service_1 = require("../match/match.service");
-const player_service_1 = require("../player/player.service");
 let GameService = GameService_1 = class GameService {
     matchService;
-    playerService;
     logger = new common_1.Logger(GameService_1.name);
     lobby = [];
-    constructor(matchService, playerService) {
+    constructor(matchService) {
         this.matchService = matchService;
-        this.playerService = playerService;
-    }
-    async getPlayerFromSocket(socket) {
-        const players = await this.playerService.findAllForTesting();
-        const connectedPlayerId = socket.handshake.query.playerId || players[this.lobby.length]?.id;
-        if (!connectedPlayerId)
-            return null;
-        return this.playerService.findById(connectedPlayerId);
     }
     addPlayerToLobby(socket, player) {
         this.logger.log(`Player ${player.username} (${socket.id}) joining lobby.`);
@@ -67,7 +57,6 @@ let GameService = GameService_1 = class GameService {
 exports.GameService = GameService;
 exports.GameService = GameService = GameService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [match_service_1.MatchService,
-        player_service_1.PlayerService])
+    __metadata("design:paramtypes", [match_service_1.MatchService])
 ], GameService);
 //# sourceMappingURL=game.service.js.map

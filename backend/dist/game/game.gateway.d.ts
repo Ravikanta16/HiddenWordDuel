@@ -1,15 +1,29 @@
+import { OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { GameService } from './game.service';
-export declare class GameGateway {
+import { JwtService } from '@nestjs/jwt';
+import { PlayerService } from 'src/player/player.service';
+import { Player } from 'src/entities/player.entity';
+import { GuessService } from 'src/guess/guess.service';
+import { ConfigService } from '@nestjs/config';
+interface AuthenticatedSocket extends Socket {
+    player: Player;
+}
+export declare class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly gameService;
+    private readonly guessService;
+    private readonly jwtService;
+    private readonly playerService;
+    private readonly configService;
     server: Server;
     private readonly logger;
-    constructor(gameService: GameService);
-    handleConnection(client: Socket): Promise<void>;
-    handleDisconnect(client: Socket): void;
-    handleJoinLobby(client: Socket): Promise<void>;
+    constructor(gameService: GameService, guessService: GuessService, jwtService: JwtService, playerService: PlayerService, configService: ConfigService);
+    handleConnection(client: AuthenticatedSocket): Promise<AuthenticatedSocket | undefined>;
+    handleDisconnect(client: AuthenticatedSocket): void;
+    handleJoinLobby(client: AuthenticatedSocket): void;
     handleMakeGuess(data: {
         guess: string;
         matchId: string;
-    }, client: Socket): void;
+    }, client: AuthenticatedSocket): Promise<void>;
 }
+export {};

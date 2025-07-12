@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { Socket } from 'socket.io';
 import { Player } from 'src/entities/player.entity';
 import { MatchService } from 'src/match/match.service';
-import { PlayerService } from 'src/player/player.service';
+import { GameGateway } from './game.gateway';
+// import { PlayerService } from 'src/player/player.service';
 
 interface LobbyMember {
   socket: Socket;
@@ -16,16 +17,16 @@ export class GameService {
 
   constructor(
     private matchService: MatchService,
-    private playerService: PlayerService, // Assuming PlayerService can find users
+    // private playerService: PlayerService, // Assuming PlayerService can find users
   ) {}
 
-  async getPlayerFromSocket(socket: Socket): Promise<Player | null> {
-    const players = await this.playerService.findAllForTesting();
-    const connectedPlayerId = (socket.handshake.query.playerId as string) || players[this.lobby.length]?.id;
-    if (!connectedPlayerId) return null;
+//   async getPlayerFromSocket(socket: Socket): Promise<Player | null> {
+//     const players = await this.playerService.findAllForTesting();
+//     const connectedPlayerId = (socket.handshake.query.playerId as string) || players[this.lobby.length]?.id;
+//     if (!connectedPlayerId) return null;
     
-    return this.playerService.findById(connectedPlayerId);
-  }
+//     return this.playerService.findById(connectedPlayerId);
+//   }
 
   addPlayerToLobby(socket: Socket, player: Player) {
     this.logger.log(`Player ${player.username} (${socket.id}) joining lobby.`);
