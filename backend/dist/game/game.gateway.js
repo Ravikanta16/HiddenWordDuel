@@ -21,54 +21,44 @@ const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const player_service_1 = require("../player/player.service");
 const guess_service_1 = require("../guess/guess.service");
-const config_1 = require("@nestjs/config");
 let GameGateway = GameGateway_1 = class GameGateway {
     gameService;
     guessService;
     jwtService;
     playerService;
-    configService;
     server;
     logger = new common_1.Logger(GameGateway_1.name);
-    constructor(gameService, guessService, jwtService, playerService, configService) {
+    constructor(gameService, guessService, jwtService, playerService) {
         this.gameService = gameService;
         this.guessService = guessService;
         this.jwtService = jwtService;
         this.playerService = playerService;
-        this.configService = configService;
     }
     async handleConnection(client) {
+        const token = client.handshake.auth.token;
+        if (!token) {
+            this.logger.warn(`Client ${client.id} connected without a token. Disconnecting.`);
+            return client.disconnect();
+        }
         try {
-            const token = client.handshake.auth.token || client.handshake.headers.authorization?.replace('Bearer ', '');
-            if (!token) {
-                this.logger.warn(`Client ${client.id} connected without a token.`);
-                client.emit('error', 'Authentication token not provided.');
-                return client.disconnect();
-            }
-            this.logger.debug(`Attempting to verify token for client ${client.id}`);
-            const payload = await this.jwtService.verifyAsync(token, {
-                secret: this.configService.get('JWT_SECRET')
-            });
+            const payload = this.jwtService.verify(token);
             const player = await this.playerService.findById(payload.sub);
             if (!player) {
-                this.logger.warn(`No player found for token payload: ${JSON.stringify(payload)}`);
-                client.emit('error', 'Player not found');
+                this.logger.warn(`Player not found for token payload. Disconnecting.`);
                 return client.disconnect();
             }
             client.player = player;
             this.logger.log(`Client ${client.id} authenticated as ${player.username}`);
+            this.gameService.handleReconnect(player, client);
         }
         catch (error) {
-            this.logger.error(`Authentication failed for client ${client.id}: ${error.message}`);
-            client.emit('error', 'Authentication failed');
+            this.logger.error(`Authentication failed for ${client.id}: ${error.message}. Disconnecting.`);
             return client.disconnect();
         }
     }
     handleDisconnect(client) {
         this.logger.log(`Client ${client.id} disconnected.`);
-        if (client.player) {
-            this.gameService.removePlayerFromLobby(client);
-        }
+        this.gameService.handleDisconnect(client);
     }
     handleJoinLobby(client) {
         if (client.player) {
@@ -76,29 +66,14 @@ let GameGateway = GameGateway_1 = class GameGateway {
         }
     }
     async handleMakeGuess(data, client) {
-        try {
-            if (!client.player) {
-                client.emit('error', 'Not authenticated');
-                return;
-            }
-            this.logger.log(`Processing guess "${data.guess}" from player ${client.player.username}`);
-            const result = await this.guessService.submitGuess(client.player, data.matchId, data.guess);
-            const matchRoom = `match_${data.matchId}`;
-            if (result.isCorrect) {
-                this.server.to(matchRoom).emit('roundEnd', {
-                    winner: client.player.username,
-                    secretWord: result.secretWord
-                });
-            }
-            client.emit('guessResult', {
-                correct: result.isCorrect,
-                message: result.isCorrect ? 'Correct guess!' : 'Incorrect guess'
-            });
+        if (!client.player) {
+            return;
         }
-        catch (error) {
-            this.logger.error(`Error handling guess: ${error.message}`);
-            client.emit('error', 'Failed to process guess');
-        }
+        const result = await this.guessService.submitGuess(client.player, data.matchId, data.guess);
+        client.emit('guessResult', {
+            correct: result.isCorrect,
+            message: result.isCorrect ? 'Correct guess! Waiting for draw/win...' : 'Incorrect guess.',
+        });
     }
 };
 exports.GameGateway = GameGateway;
@@ -122,14 +97,11 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleMakeGuess", null);
 exports.GameGateway = GameGateway = GameGateway_1 = __decorate([
-    (0, websockets_1.WebSocketGateway)({ cors: { origin: '*',
-            credentials: true,
-        } }),
+    (0, websockets_1.WebSocketGateway)({ cors: { origin: '*' } }),
     __param(0, (0, common_1.Inject)((0, common_1.forwardRef)(() => game_service_1.GameService))),
     __metadata("design:paramtypes", [game_service_1.GameService,
         guess_service_1.GuessService,
         jwt_1.JwtService,
-        player_service_1.PlayerService,
-        config_1.ConfigService])
+        player_service_1.PlayerService])
 ], GameGateway);
 //# sourceMappingURL=game.gateway.js.map

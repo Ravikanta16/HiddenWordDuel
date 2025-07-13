@@ -11,10 +11,10 @@ import { RoundModule } from 'src/round/round.module';
 
 @Module({
   imports: [
-    MatchModule,
+    forwardRef(() => MatchModule),
     PlayerModule,
     AuthModule,
-    JwtModule,
+    // JwtModule,
     GuessModule,
     forwardRef(() => RoundModule),
   ],

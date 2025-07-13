@@ -33,6 +33,7 @@ exports.AuthModule = AuthModule = __decorate([
                 }),
             }),
         ],
+        exports: [jwt_1.JwtModule],
     })
 ], AuthModule);
 //# sourceMappingURL=auth.module.js.map

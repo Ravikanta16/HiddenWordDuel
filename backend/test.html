@@ -4,383 +4,276 @@
     <meta charset="UTF-8">
     <title>Hidden Word Duel - Test Client</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            padding: 20px; 
-            background-color: #f0f2f5;
-            display: flex;
-            gap: 20px;
-        }
-        .container { 
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            width: 45%;
-        }
-        h2 { margin-top: 0; color: #1a73e8; }
-        input, button { 
-            width: 100%;
-            padding: 8px;
-            margin: 5px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        button { 
-            background: #1a73e8;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        button:hover:not(:disabled) {
-            background: #1557b0;
-        }
-        #logs {
-            background: #2b2b2b;
-            color: #fff;
-            padding: 10px;
-            border-radius: 4px;
-            font-family: monospace;
-            height: 400px;
-            overflow-y: auto;
-            margin-top: 10px;
-        }
-        .status {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-            background: #e8f0fe;
-        }
-        .error { color: #d32f2f; }
-        .success { color: #388e3c; }
-        .word-tiles {
-            display: flex;
-            gap: 10px;
-            margin: 20px 0;
-            justify-content: center;
-        }
-        .tile {
-            width: 40px;
-            height: 40px;
-            border: 2px solid #1a73e8;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-            background: white;
-        }
-        .tile.revealed {
-            background: #e8f0fe;
-        }
-        #game-container {
-            display: none;  /* Hidden by default, shown when match starts */
-        }
+        body { font-family: sans-serif; display: flex; gap: 20px; padding: 20px; background-color: #f4f4f9; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width: 45%; }
+        h1, h2, h3, h4 { color: #333; }
+        input, button { padding: 10px; margin-top: 5px; border-radius: 4px; border: 1px solid #ccc; width: calc(100% - 22px); box-sizing: border-box; }
+        button { background-color: #007bff; color: white; cursor: pointer; border: none; font-weight: bold; }
+        button:hover:not(:disabled) { background-color: #0056b3; }
+        button:disabled { background-color: #a0a0a0; cursor: not-allowed; }
+        #logs { background-color: #282c34; color: #abb2bf; padding: 15px; border-radius: 4px; height: 500px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;}
+        .log-time { color: #61afef; }
+        .log-event { color: #98c379; font-weight: bold; }
+        .log-error { color: #e06c75; font-weight: bold; }
+        .log-warn { color: #e5c07b; font-weight: bold; }
+        .log-game-over { color: #c678dd; font-weight: bold; }
+        .auth-forms { display: flex; gap: 20px; }
+        .form-group { flex: 1; }
+        .word-tiles { display: flex; gap: 10px; margin: 20px 0; justify-content: center; }
+        .tile { width: 40px; height: 40px; border: 2px solid #007bff; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; }
+        .tile.revealed { background: #e8f0fe; }
+        #game-container { display: none; }
+        #timer-display { font-weight: bold; color: #d32f2f; }
     </style>
 </head>
 <body>
+
     <div class="container">
-        <h2>Game Controls</h2>
+        <h1>Hidden Word Duel - Controls</h1>
         
-        <!-- Authentication Section -->
         <div id="auth-section">
-            <h3>1. Authentication</h3>
-            <div id="register-form">
-                <h4>Register</h4>
-                <input type="text" id="reg-username" placeholder="Username">
-                <input type="email" id="reg-email" placeholder="Email">
-                <input type="password" id="reg-password" placeholder="Password">
-                <button onclick="register()">Register</button>
+            <h2>1. Authentication</h2>
+            <div class="auth-forms">
+                <div class="form-group">
+                    <h3>Register</h3>
+                    <input type="text" id="reg-username" placeholder="Username">
+                    <input type="email" id="reg-email" placeholder="Email">
+                    <input type="password" id="reg-password" placeholder="Password">
+                    <button id="register-btn">Register</button>
+                </div>
+                <div class="form-group">
+                    <h3>Login</h3>
+                    <input type="text" id="login-username" placeholder="Username">
+                    <input type="password" id="login-password" placeholder="Password">
+                    <button id="login-btn">Login</button>
+                </div>
             </div>
-            <div id="login-form">
-                <h4>Login</h4>
-                <input type="text" id="login-username" placeholder="Username">
-                <input type="password" id="login-password" placeholder="Password">
-                <button onclick="login()">Login</button>
-            </div>
-            <div class="status" id="auth-status">Not logged in</div>
+            <p><b>Auth Status:</b> <span id="auth-status">Not Logged In</span></p>
         </div>
+        <hr>
 
-        <!-- Connection Section -->
         <div id="connection-section">
-            <h3>2. WebSocket Connection</h3>
-            <button onclick="connect()" id="connect-btn" disabled>Connect to Game Server</button>
-            <div class="status" id="connection-status">Not connected</div>
+            <h2>2. Connection</h2>
+            <button id="connect-btn" disabled>Connect to Game Server</button>
+            <p><b>Connection Status:</b> <span id="connection-status">Disconnected</span></p>
         </div>
-
-        <!-- Game Section -->
+        <hr>
+        
         <div id="game-section">
-            <h3>3. Game Actions</h3>
-            <button onclick="joinLobby()" id="join-lobby-btn" disabled>Join Lobby</button>
-            
-            <!-- Game container - will be shown to both players when match starts -->
-            <div id="game-container" style="display: none;">
-                <div id="word-container">
-                    <h4>Current Word</h4>
-                    <div class="word-tiles" id="word-tiles"></div>
-                </div>
-
-                <div id="guess-section">
-                    <h4>Make a Guess</h4>
-                    <div class="guess-form">
-                        <input type="text" id="guess-input" placeholder="Enter your guess">
-                        <button onclick="makeGuess()" id="guess-btn">Submit Guess</button>
-                    </div>
-                </div>
+            <h2>3. Game</h2>
+            <button id="join-lobby-btn" disabled>Join Lobby</button>
+            <div id="game-container">
+                <h4>Next letter in: <span id="timer-display">--</span>s</h4>
+                <div class="word-tiles" id="word-tiles"></div>
+                <h4>Make a Guess</h4>
+                <input type="text" id="guess-input" placeholder="Enter your guess">
+                <button id="make-guess-btn">Submit Guess</button>
             </div>
-            
-            <div class="status" id="game-status">Not in game</div>
         </div>
     </div>
 
     <div class="container">
         <h2>Game Logs</h2>
-        <div id="logs"></div>
+        <pre id="logs"></pre>
     </div>
 
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
-        let socket = null;
-        let currentMatchId = null;
-        let wordLength = 0;
-        const API_URL = 'http://localhost:3000';
-
-        function log(message, type = 'info') {
-            const logs = document.getElementById('logs');
-            const time = new Date().toLocaleTimeString();
-            const color = type === 'error' ? '#ff7f7f' : 
-                         type === 'success' ? '#7fff7f' : '#ffffff';
-            logs.innerHTML += `<div style="color: ${color}">[${time}] ${message}</div>`;
-            logs.scrollTop = logs.scrollHeight;
-        }
-
-        function clearGuessInput() {
-            const guessInput = document.getElementById('guess-input');
-            const guessBtn = document.getElementById('guess-btn');
-            if (guessInput && guessBtn) {
-                guessInput.value = '';
-                guessInput.disabled = false;
-                guessBtn.disabled = false;
-            }
-        }
-
-        async function register() {
-            const username = document.getElementById('reg-username').value;
-            const email = document.getElementById('reg-email').value;
-            const password = document.getElementById('reg-password').value;
-
-            try {
-                const response = await fetch(`${API_URL}/auth/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, email, password })
-                });
-                const data = await response.json();
-                
-                if (response.ok) {
-                    log(`Registration successful for ${username}`, 'success');
-                } else {
-                    throw new Error(data.message || 'Registration failed');
-                }
-            } catch (error) {
-                log(`Registration error: ${error.message}`, 'error');
-            }
-        }
-
-        async function login() {
-            const username = document.getElementById('login-username').value;
-            const password = document.getElementById('login-password').value;
-
-            try {
-                const response = await fetch(`${API_URL}/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                const data = await response.json();
-                
-                if (response.ok) {
-                    localStorage.setItem('token', data.access_token);
-                    document.getElementById('auth-status').textContent = `Logged in as ${username}`;
-                    document.getElementById('connect-btn').disabled = false;
-                    log(`Login successful`, 'success');
-                } else {
-                    throw new Error(data.message || 'Login failed');
-                }
-            } catch (error) {
-                log(`Login error: ${error.message}`, 'error');
-            }
-        }
-
-        function connect() {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                log('No auth token found. Please login first.', 'error');
-                return;
-            }
-
-            socket = io(API_URL, {
-                auth: { token },
-                transports: ['websocket']
-            });
-
-            socket.on('connect', () => {
-                document.getElementById('connection-status').textContent = 'Connected';
-                document.getElementById('join-lobby-btn').disabled = false;
-                log('Connected to game server', 'success');
-            });
-
-            socket.on('matchStart', (data) => {
-                currentMatchId = data.matchId;
-                document.getElementById('game-container').style.display = 'block';
-                document.getElementById('join-lobby-btn').style.display = 'none';
-                document.getElementById('game-status').textContent = 
-                    `Match started! Playing against ${data.opponent}`;
-                clearGuessInput();
-                log(`Match started against ${data.opponent}`);
-            });
-
-            socket.on('newRound', (data) => {
-                wordLength = data.wordLength;
-                createWordTiles(data.wordLength);
-                document.getElementById('game-container').style.display = 'block';
-                clearGuessInput();
-                log(`New round started! Word has ${data.wordLength} letters.`);
-            });
-
-            socket.on('letterReveal', (data) => {
-                updateTile(data.index, data.letter);
-                log(`Letter revealed: ${data.letter} at position ${data.index + 1}`);
-            });
-
-            socket.on('guessResult', (data) => {
-                clearGuessInput();
-                if (data.correct) {
-                    log('Correct guess!', 'success');
-                } else {
-                    log('Incorrect guess', 'error');
-                }
-            });
-
-            socket.on('roundEnd', (data) => {
-                // Show complete word
-                const word = data.secretWord;
-                for (let i = 0; i < word.length; i++) {
-                    updateTile(i, word[i]);
-                }
-                
-                const message = data.winner ? 
-                    `Round ended! Winner: ${data.winner}. Word was: ${data.secretWord}` :
-                    `Round ended! No winner. Word was: ${data.secretWord}`;
-                log(message);
-
-                clearGuessInput();
-
-                // Prepare for next round
-                setTimeout(() => {
-                    document.getElementById('word-tiles').innerHTML = '';
-                }, 3000);
-            });
-
-            socket.on('error', (error) => {
-                log(`Error: ${error}`, 'error');
-                clearGuessInput();
-            });
-
-            socket.on('disconnect', () => {
-                document.getElementById('connection-status').textContent = 'Disconnected';
-                document.getElementById('join-lobby-btn').disabled = true;
-                document.getElementById('game-container').style.display = 'none';
-                log('Disconnected from game server', 'error');
-            });
-        }
-
-        function joinLobby() {
-            if (!socket?.connected) {
-                log('Not connected to server', 'error');
-                return;
-            }
-            socket.emit('joinLobby');
-            log('Joining lobby...');
-        }
-
-        function createWordTiles(length) {
-            wordLength = length;
-            const container = document.getElementById('word-tiles');
-            container.innerHTML = '';
-            
-            for (let i = 0; i < length; i++) {
-                const tile = document.createElement('div');
-                tile.className = 'tile';
-                tile.id = `tile-${i}`;
-                container.appendChild(tile);
-            }
-        }
-
-        function updateTile(index, letter) {
-            const tile = document.getElementById(`tile-${index}`);
-            if (tile) {
-                tile.textContent = letter;
-                tile.classList.add('revealed');
-            }
-        }
-
-        function makeGuess() {
-            if (!socket?.connected || !currentMatchId) {
-                log('Not in a match', 'error');
-                return;
-            }
-
-            const guessInput = document.getElementById('guess-input');
-            const guessBtn = document.getElementById('guess-btn');
-            const guess = guessInput.value.trim().toUpperCase();
-            
-            if (!guess) {
-                log('Please enter a guess', 'error');
-                return;
-            }
-
-            if (guess.length !== wordLength) {
-                log(`Guess must be ${wordLength} letters long`, 'error');
-                return;
-            }
-
-            // Disable input while processing
-            guessInput.disabled = true;
-            guessBtn.disabled = true;
-
-            // Send the guess
-            socket.emit('makeGuess', {
-                guess: guess,
-                matchId: currentMatchId
-            });
-
-            // Clear input immediately
-            clearGuessInput();
-            log(`Submitted guess: ${guess}`);
-        }
-
-        // Add event listeners after DOM loads
         document.addEventListener('DOMContentLoaded', () => {
+            const API_URL = 'http://localhost:3000';
+            const TICK_SECONDS = 10.0;
+            let socket = null;
+            let currentMatchId = null;
+            let wordLength = 0;
+            let uiTimerInterval = null;
+
+            const registerBtn = document.getElementById('register-btn');
+            const loginBtn = document.getElementById('login-btn');
+            const connectBtn = document.getElementById('connect-btn');
+            const joinLobbyBtn = document.getElementById('join-lobby-btn');
+            const makeGuessBtn = document.getElementById('make-guess-btn');
             const guessInput = document.getElementById('guess-input');
-            const guessBtn = document.getElementById('guess-btn');
+            const timerDisplay = document.getElementById('timer-display');
+            
+            function logMessage(message, type = 'event') {
+                const logs = document.getElementById('logs');
+                const time = new Date().toLocaleTimeString();
+                const logClass = `log-${type}`;
+                logs.innerHTML += `<div><span class="log-time">[${time}]</span> <span class="${logClass}">${type.toUpperCase()}:</span> ${message}</div>`;
+                logs.scrollTop = logs.scrollHeight;
+            }
 
-            guessInput?.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    makeGuess();
+            function createWordTiles(length) {
+                wordLength = length;
+                const container = document.getElementById('word-tiles');
+                container.innerHTML = '';
+                for (let i = 0; i < length; i++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    container.appendChild(tile);
                 }
-            });
+            }
 
-            guessBtn?.addEventListener('click', (e) => {
-                e.preventDefault();
-                makeGuess();
-            });
+            function updateTile(index, letter) {
+                const tiles = document.getElementById('word-tiles').children;
+                if (tiles[index]) {
+                    tiles[index].textContent = letter.toUpperCase();
+                    tiles[index].classList.add('revealed');
+                }
+            }
+
+            function disableGameControls(disabled) {
+                guessInput.disabled = disabled;
+                makeGuessBtn.disabled = disabled;
+            }
+
+            function startUiTimer() {
+                clearInterval(uiTimerInterval);
+                let timeLeft = TICK_SECONDS;
+                timerDisplay.textContent = timeLeft.toFixed(1);
+                uiTimerInterval = setInterval(() => {
+                    timeLeft -= 0.1;
+                    if (timeLeft <= 0) {
+                        timeLeft = 0;
+                        clearInterval(uiTimerInterval);
+                    }
+                    timerDisplay.textContent = timeLeft.toFixed(1);
+                }, 100);
+            }
+
+            function stopUiTimer() {
+                clearInterval(uiTimerInterval);
+                timerDisplay.textContent = '--';
+            }
+
+            async function register() {
+                const username = document.getElementById('reg-username').value;
+                const email = document.getElementById('reg-email').value;
+                const password = document.getElementById('reg-password').value;
+                try {
+                    const response = await fetch(`${API_URL}/auth/register`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username,email,password})});
+                    const data = await response.json();
+                    if(!response.ok) throw new Error(data.message || "Registration failed");
+                    logMessage(`Registered ${data.username}. Please log in.`,"success");
+                } catch(error) { logMessage(error.message,"error"); }
+            }
+
+            async function login() {
+                const username = document.getElementById('login-username').value;
+                const password = document.getElementById('login-password').value;
+                try {
+                    const response = await fetch(`${API_URL}/auth/login`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username,password})});
+                    const data = await response.json();
+                    if(!response.ok) throw new Error(data.message || "Login failed");
+                    localStorage.setItem("jwt_token", data.access_token);
+                    document.getElementById("auth-status").textContent = `Logged in as ${username}`;
+                    connectBtn.disabled = false;
+                    logMessage("Login successful","success");
+                } catch(error) { logMessage(error.message,"error"); }
+            }
+
+            function makeGuess() {
+                if(!socket || !socket.connected || !currentMatchId) return logMessage("Not in a match","error");
+                const guess = guessInput.value.trim().toUpperCase();
+                if(!guess) return logMessage("Please enter a guess","error");
+                if(guess.length !== wordLength) return logMessage(`Guess must be ${wordLength} letters long`,"error");
+                disableGameControls(true);
+                socket.emit("makeGuess",{guess,matchId:currentMatchId});
+                logMessage(`Submitted guess: ${guess}`);
+            }
+
+            function connect() {
+                const token = localStorage.getItem('jwt_token');
+                if (!token) return logMessage('No JWT token found.', 'error');
+                
+                if (socket) socket.disconnect();
+                socket = io(API_URL, { auth: { token }, transports: ['websocket'] });
+
+                socket.on('connect', () => {
+                    document.getElementById('connection-status').textContent = 'Connected';
+                    connectBtn.disabled = true;
+                    joinLobbyBtn.disabled = false;
+                    logMessage('Successfully connected.', 'success');
+                });
+                
+                socket.on('disconnect', () => {
+                    document.getElementById('connection-status').textContent = 'Disconnected';
+                    connectBtn.disabled = false;
+                    joinLobbyBtn.disabled = true;
+                    stopUiTimer();
+                    logMessage('Disconnected.', 'warn');
+                });
+
+                socket.on('error', (error) => logMessage(`Server error: ${error}`, 'error'));
+                socket.on('lobbyJoined', (data) => logMessage(data.message));
+                
+                socket.on('matchStart', (data) => {
+                    currentMatchId = data.matchId;
+                    document.getElementById('game-container').style.display = 'block';
+                    joinLobbyBtn.style.display = 'none';
+                    logMessage(`Match started! Opponent: ${data.opponent}.`);
+                });
+                
+                socket.on('newRound', (data) => {
+                    logMessage(`New round! Word has ${data.wordLength} letters.`);
+                    createWordTiles(data.wordLength);
+                    disableGameControls(false);
+                    startUiTimer();
+                });
+                
+                socket.on('letterReveal', (data) => {
+                    updateTile(data.index, data.letter);
+                    logMessage(`Letter revealed: '${data.letter}'`);
+                    guessInput.value = '';
+                    disableGameControls(false);
+                    startUiTimer();
+                });
+                
+                socket.on('guessResult', (data) => {
+                    logMessage(data.message, data.correct ? 'success' : 'warn');
+                });
+
+                socket.on('roundEnd', (data) => {
+                    logMessage(`Round over! The word was: ${data.secretWord}. Winner: ${data.winner || 'None'}`);
+                    disableGameControls(true);
+                    stopUiTimer();
+                });
+
+                socket.on('playerDisconnected', (data) => {
+                    logMessage(data.message, 'warn');
+                    disableGameControls(true);
+                    stopUiTimer();
+                });
+
+                socket.on('playerReconnected', (data) => {
+                    logMessage(data.message, 'success');
+                    disableGameControls(false);
+                    startUiTimer();
+                });
+
+                socket.on('gameOver', (data) => {
+                    logMessage(`GAME OVER! Winner: ${data.winner}. Reason: ${data.reason}`, 'game-over');
+                    disableGameControls(true);
+                    joinLobbyBtn.style.display = 'block';
+                    joinLobbyBtn.disabled = true;
+                    document.getElementById('game-container').style.display = 'none';
+                    stopUiTimer();
+                });
+            }
+
+            function joinLobby() {
+                if (socket && socket.connected) {
+                    socket.emit('joinLobby');
+                    logMessage('Sent "joinLobby" event.');
+                }
+            }
+
+            registerBtn.addEventListener('click', register);
+            loginBtn.addEventListener('click', login);
+            connectBtn.addEventListener('click', connect);
+            joinLobbyBtn.addEventListener('click', joinLobby);
+            makeGuessBtn.addEventListener('click', makeGuess);
+            guessInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') makeGuess(); });
         });
     </script>
 </body>

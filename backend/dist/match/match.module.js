@@ -14,6 +14,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const match_entity_1 = require("../entities/match.entity");
 const player_entity_1 = require("../entities/player.entity");
 const round_module_1 = require("../round/round.module");
+const game_module_1 = require("../game/game.module");
 let MatchModule = class MatchModule {
 };
 exports.MatchModule = MatchModule;
@@ -22,6 +23,7 @@ exports.MatchModule = MatchModule = __decorate([
         imports: [
             typeorm_1.TypeOrmModule.forFeature([match_entity_1.Match, player_entity_1.Player]),
             round_module_1.RoundModule,
+            (0, common_1.forwardRef)(() => game_module_1.GameModule),
         ],
         providers: [match_service_1.MatchService],
         controllers: [match_controller_1.MatchController],

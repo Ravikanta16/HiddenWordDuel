@@ -5,7 +5,6 @@ import { JwtService } from '@nestjs/jwt';
 import { PlayerService } from 'src/player/player.service';
 import { Player } from 'src/entities/player.entity';
 import { GuessService } from 'src/guess/guess.service';
-import { ConfigService } from '@nestjs/config';
 interface AuthenticatedSocket extends Socket {
     player: Player;
 }
@@ -14,10 +13,9 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     private readonly guessService;
     private readonly jwtService;
     private readonly playerService;
-    private readonly configService;
     server: Server;
     private readonly logger;
-    constructor(gameService: GameService, guessService: GuessService, jwtService: JwtService, playerService: PlayerService, configService: ConfigService);
+    constructor(gameService: GameService, guessService: GuessService, jwtService: JwtService, playerService: PlayerService);
     handleConnection(client: AuthenticatedSocket): Promise<AuthenticatedSocket | undefined>;
     handleDisconnect(client: AuthenticatedSocket): void;
     handleJoinLobby(client: AuthenticatedSocket): void;

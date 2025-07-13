@@ -20,12 +20,16 @@ const game_gateway_1 = require("../game/game.gateway");
 const match_entity_1 = require("../entities/match.entity");
 const round_entity_1 = require("../entities/round.entity");
 const typeorm_2 = require("typeorm");
-const WORD_LIST = ['DEVELOPER', 'WEBSOCKET', 'JAVASCRIPT', 'AUTHENTICATION', 'DATABASE'];
+const WORD_LIST = ['ABCD', 'EFGH', 'IJKL', 'MNOP', 'QRST', 'UVWX', 'YZ'];
 const TICK_RATE_MS = 10000;
+const DRAW_GRACE_PERIOD_MS = 2000;
 let RoundService = RoundService_1 = class RoundService {
     roundRepository;
     gameGateway;
     logger = new common_1.Logger(RoundService_1.name);
+    guessesThisTick = new Map();
+    gracePeriodTimers = new Map();
+    firstCorrectGuessers = new Map();
     constructor(roundRepository, gameGateway) {
         this.roundRepository = roundRepository;
         this.gameGateway = gameGateway;
@@ -40,15 +44,15 @@ let RoundService = RoundService_1 = class RoundService {
         });
         await this.roundRepository.save(round);
         this.logger.log(`New round created for match ${match.id} with word: ${secretWord}`);
-        const updatedMatch = await this.roundRepository.manager.findOne(match_entity_1.Match, { where: { id: match.id }, relations: ['rounds'] });
-        if (!updatedMatch) {
-            this.logger.error(`Failed to create round for match ${match.id}`);
-            throw new Error('Failed to create round');
-        }
-        this.startRound(round, updatedMatch.rounds.length);
+        const updatedMatch = await this.roundRepository.manager.findOne(match_entity_1.Match, {
+            where: { id: match.id },
+            relations: ['rounds'],
+        });
+        this.startRound(round, updatedMatch?.rounds.length || 0);
         return round;
     }
     startRound(round, roundNumber) {
+        this.guessesThisTick.set(round.id, new Set());
         const matchRoom = `match_${round.match.id}`;
         this.gameGateway.server.to(matchRoom).emit('newRound', {
             roundId: round.id,
@@ -62,6 +66,7 @@ let RoundService = RoundService_1 = class RoundService {
             const round = await this.getActiveRoundById(roundId);
             if (!round)
                 return;
+            this.guessesThisTick.set(roundId, new Set());
             const revealedCount = round.revealedLetters.length;
             if (revealedCount >= round.secretWord.length) {
                 this.endRound(round, null);
@@ -78,13 +83,33 @@ let RoundService = RoundService_1 = class RoundService {
                 index: revealIndex,
                 letter: round.secretWord[revealIndex],
             });
-            this.logger.log(`Revealed letter at index ${revealIndex} for round ${round.id}`);
+            this.logger.log(`Revealed letter at index ${revealIndex} for round ${round.id}. Players can now guess.`);
             this.scheduleNextLetterReveal(roundId);
         }, TICK_RATE_MS);
+    }
+    initiateRoundEnd(round, guesser) {
+        if (this.gracePeriodTimers.has(round.id)) {
+            this.logger.log(`Second correct guess received for round ${round.id}. It's a draw!`);
+            clearTimeout(this.gracePeriodTimers.get(round.id));
+            this.gracePeriodTimers.delete(round.id);
+            this.endRound(round, null);
+        }
+        else {
+            this.logger.log(`First correct guess by ${guesser.username}. Starting draw grace period.`);
+            this.firstCorrectGuessers.set(round.id, guesser);
+            const timer = setTimeout(() => {
+                this.logger.log(`Grace period ended. ${guesser.username} is the sole winner.`);
+                this.endRound(round, guesser);
+            }, DRAW_GRACE_PERIOD_MS);
+            this.gracePeriodTimers.set(round.id, timer);
+        }
     }
     async endRound(round, winner) {
         if (round.status !== 'ongoing')
             return;
+        this.gracePeriodTimers.delete(round.id);
+        this.firstCorrectGuessers.delete(round.id);
+        this.guessesThisTick.delete(round.id);
         round.status = 'finished';
         round.winner = winner;
         await this.roundRepository.save(round);
@@ -93,7 +118,16 @@ let RoundService = RoundService_1 = class RoundService {
             winner: winner ? winner.username : null,
             secretWord: round.secretWord,
         });
-        this.logger.log(`Round ${round.id} ended. Winner: ${winner?.username || 'None'}`);
+        this.logger.log(`Round ${round.id} ended. Winner: ${winner?.username || 'None (Draw)'}`);
+    }
+    async forceStopRound(roundId) {
+        const round = await this.getActiveRoundById(roundId);
+        if (round) {
+            this.logger.log(`Force stopping round ${round.id} due to forfeit.`);
+            round.status = 'finished';
+            await this.roundRepository.save(round);
+            this.guessesThisTick.delete(round.id);
+        }
     }
     async getActiveRoundForMatch(matchId) {
         return this.roundRepository.findOne({
@@ -104,8 +138,15 @@ let RoundService = RoundService_1 = class RoundService {
     async getActiveRoundById(roundId) {
         return this.roundRepository.findOne({
             where: { id: roundId, status: 'ongoing' },
-            relations: ['match']
+            relations: ['match'],
         });
+    }
+    canPlayerGuess(roundId, playerId) {
+        const playersWhoGuessed = this.guessesThisTick.get(roundId);
+        return playersWhoGuessed ? !playersWhoGuessed.has(playerId) : false;
+    }
+    recordGuess(roundId, playerId) {
+        this.guessesThisTick.get(roundId)?.add(playerId);
     }
 };
 exports.RoundService = RoundService;

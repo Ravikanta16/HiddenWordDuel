@@ -21,28 +21,45 @@ export class GuessService {
       const round = await this.roundService.getActiveRoundForMatch(matchId);
       
       if (!round) {
-        this.logger.warn(`No active round found for match ${matchId}`);
+        this.logger.warn(`No active round for guess attempt in match ${matchId}`);
         return { isCorrect: false, secretWord: '' };
       }
 
-      const normalizedGuess = word.toUpperCase().trim();
-      const normalizedSecret = round.secretWord.toUpperCase().trim();
+      // VALIDATION: Check if the player is allowed to guess in this tick.
+      if (!this.roundService.canPlayerGuess(round.id, player.id)) {
+        this.logger.warn(`Player ${player.username} tried to guess more than once per tick.`);
+        // Optionally, emit a specific error back to the user.
+        return { isCorrect: false, secretWord: '' };
+      }
+
+      // Record the guess immediately to prevent race conditions.
+      this.roundService.recordGuess(round.id, player.id);
+      
+      // const normalizedGuess = word.toUpperCase().trim();
+      // const normalizedSecret = round.secretWord.toUpperCase().trim();
+      const isCorrect = round.secretWord.toUpperCase() === word.toUpperCase().trim();
 
       // Create and save the guess
       const guess = this.guessRepository.create({
         player,
         round,
-        word: normalizedGuess,
+        // word: normalizedGuess,
+        word,
       });
       await this.guessRepository.save(guess);
       
       // Check if guess is correct
-      const isCorrect = normalizedSecret === normalizedGuess;
+      // const isCorrect = normalizedSecret === normalizedGuess;
       
-      this.logger.log(`Player ${player.username} guessed "${word}" - ${isCorrect ? 'CORRECT' : 'INCORRECT'}`);
+      // this.logger.log(`Player ${player.username} guessed "${word}" - ${isCorrect ? 'CORRECT' : 'INCORRECT'}`);
 
+      // if (isCorrect) {
+      //   await this.roundService.endRound(round, player);
+      // }
       if (isCorrect) {
-        await this.roundService.endRound(round, player);
+        this.logger.log(`Player ${player.username} guessed correctly! Initiating end of round.`);
+        // MODIFIED: Instead of ending the round, we start the grace period process.
+        this.roundService.initiateRoundEnd(round, player);
       }
 
       return { isCorrect, secretWord: round.secretWord };

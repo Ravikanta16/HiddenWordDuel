@@ -8,6 +8,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 var GameService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameService = void 0;
@@ -17,6 +20,7 @@ let GameService = GameService_1 = class GameService {
     matchService;
     logger = new common_1.Logger(GameService_1.name);
     lobby = [];
+    activeMatches = new Map();
     constructor(matchService) {
         this.matchService = matchService;
     }
@@ -33,7 +37,7 @@ let GameService = GameService_1 = class GameService {
             const player1Info = this.lobby.shift();
             const player2Info = this.lobby.shift();
             if (!player1Info || !player2Info) {
-                this.logger.error('Failed to start match: not enough players.');
+                this.logger.error('Failed to create match: insufficient players in lobby');
                 return;
             }
             this.matchService.createMatch(player1Info.player, player2Info.player)
@@ -41,10 +45,42 @@ let GameService = GameService_1 = class GameService {
                 const matchRoom = `match_${match.id}`;
                 player1Info.socket.join(matchRoom);
                 player2Info.socket.join(matchRoom);
-                player1Info.socket.to(matchRoom).emit('matchStart', { matchId: match.id, opponent: player2Info.player.username });
+                const playersMap = new Map();
+                playersMap.set(player1Info.player.id, player1Info.socket);
+                playersMap.set(player2Info.player.id, player2Info.socket);
+                this.activeMatches.set(match.id, { matchId: match.id, players: playersMap });
+                player1Info.socket.emit('matchStart', { matchId: match.id, opponent: player2Info.player.username });
                 player2Info.socket.emit('matchStart', { matchId: match.id, opponent: player1Info.player.username });
             });
         }
+    }
+    handleReconnect(player, newSocket) {
+        for (const [matchId, match] of this.activeMatches.entries()) {
+            if (match.players.has(player.id)) {
+                this.logger.log(`Player ${player.username} is reconnecting to match ${matchId}`);
+                match.players.set(player.id, newSocket);
+                newSocket.join(`match_${matchId}`);
+                this.matchService.handlePlayerReconnect(matchId, player.id);
+                return;
+            }
+        }
+    }
+    handleDisconnect(client) {
+        const disconnectedPlayerId = client.player?.id;
+        if (!disconnectedPlayerId)
+            return;
+        this.removePlayerFromLobby(client);
+        for (const [matchId, match] of this.activeMatches.entries()) {
+            if (match.players.has(disconnectedPlayerId)) {
+                this.logger.log(`Player ${disconnectedPlayerId} from match ${matchId} has disconnected.`);
+                this.matchService.handlePlayerDisconnect(matchId, disconnectedPlayerId);
+                break;
+            }
+        }
+    }
+    concludeMatch(matchId) {
+        this.activeMatches.delete(matchId);
+        this.logger.log(`Match ${matchId} concluded and removed from active tracking.`);
     }
     removePlayerFromLobby(socket) {
         const initialLobbySize = this.lobby.length;
@@ -57,6 +93,7 @@ let GameService = GameService_1 = class GameService {
 exports.GameService = GameService;
 exports.GameService = GameService = GameService_1 = __decorate([
     (0, common_1.Injectable)(),
+    __param(0, (0, common_1.Inject)((0, common_1.forwardRef)(() => match_service_1.MatchService))),
     __metadata("design:paramtypes", [match_service_1.MatchService])
 ], GameService);
 //# sourceMappingURL=game.service.js.map

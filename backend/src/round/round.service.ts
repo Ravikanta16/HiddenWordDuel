@@ -6,12 +6,22 @@ import { Round } from 'src/entities/round.entity';
 import { Repository } from 'typeorm';
 import { Player } from 'src/entities/player.entity';
 
-const WORD_LIST = ['DEVELOPER', 'WEBSOCKET', 'JAVASCRIPT', 'AUTHENTICATION', 'DATABASE'];
-const TICK_RATE_MS = 10000; // Reveal a new letter every 10 seconds
+//const WORD_LIST = ['DEVELOPER', 'WEBSOCKET', 'JAVASCRIPT', 'AUTHENTICATION', 'DATABASE'];
+const WORD_LIST = ['ABCD', 'EFGH', 'IJKL', 'MNOP', 'QRST', 'UVWX', 'YZ'];
+const TICK_RATE_MS = 10000;
+const DRAW_GRACE_PERIOD_MS = 2000;
 
 @Injectable()
 export class RoundService {
   private readonly logger = new Logger(RoundService.name);
+
+  // This map will store which players have guessed in the current tick for each round.
+  // Key: roundId (string), Value: Set of playerIds (string)
+  private guessesThisTick = new Map<string, Set<string>>();
+
+  private gracePeriodTimers = new Map<string, NodeJS.Timeout>();
+  private firstCorrectGuessers = new Map<string, Player>();
+
 
   constructor(
     @InjectRepository(Round)
@@ -22,7 +32,7 @@ export class RoundService {
 
   public async createRound(match: Match): Promise<Round> {
     const secretWord = WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)];
-    
+
     const round = this.roundRepository.create({
       match,
       secretWord,
@@ -32,23 +42,24 @@ export class RoundService {
 
     await this.roundRepository.save(round);
     this.logger.log(`New round created for match ${match.id} with word: ${secretWord}`);
-    
-    // We need to fetch the match with its relations to get the round count correctly.
-    const updatedMatch = await this.roundRepository.manager.findOne(Match, { where: { id: match.id }, relations: ['rounds'] });
-    
-    if(!updatedMatch) {
-      this.logger.error(`Failed to create round for match ${match.id}`);
-      throw new Error('Failed to create round');
-    }
 
-    this.startRound(round, updatedMatch.rounds.length);
-    
+    const updatedMatch = await this.roundRepository.manager.findOne(Match, {
+      where: { id: match.id },
+      relations: ['rounds'],
+    });
+
+    this.startRound(round, updatedMatch?.rounds.length || 0);
+
     return round;
   }
 
   private startRound(round: Round, roundNumber: number) {
-    const matchRoom = `match_${round.match.id}`;
     
+
+    // Clear any leftover guess data for this round and initialize a new Set.
+    this.guessesThisTick.set(round.id, new Set());
+    const matchRoom = `match_${round.match.id}`;
+
     this.gameGateway.server.to(matchRoom).emit('newRound', {
       roundId: round.id,
       wordLength: round.secretWord.length,
@@ -61,11 +72,14 @@ export class RoundService {
   private scheduleNextLetterReveal(roundId: string) {
     setTimeout(async () => {
       const round = await this.getActiveRoundById(roundId);
-      if (!round) return; // Round ended or not found
+      if (!round) return;
 
+      // Clear the guess list for the new tick, BEFORE revealing the letter.
+      this.guessesThisTick.set(roundId, new Set());
+      
       const revealedCount = round.revealedLetters.length;
       if (revealedCount >= round.secretWord.length) {
-        this.endRound(round, null);
+        this.endRound(round, null); // Draw condition
         return;
       }
 
@@ -82,15 +96,60 @@ export class RoundService {
         index: revealIndex,
         letter: round.secretWord[revealIndex],
       });
-      
-      this.logger.log(`Revealed letter at index ${revealIndex} for round ${round.id}`);
-      this.scheduleNextLetterReveal(roundId);
 
+      this.logger.log(`Revealed letter at index ${revealIndex} for round ${round.id}. Players can now guess.`);
+
+      this.scheduleNextLetterReveal(roundId);
     }, TICK_RATE_MS);
   }
 
+  public initiateRoundEnd(round: Round, guesser: Player) {
+    // If a grace period timer is already running, this is the second correct guess.
+    if (this.gracePeriodTimers.has(round.id)) {
+      this.logger.log(`Second correct guess received for round ${round.id}. It's a draw!`);
+      // Clear the pending timer for the first guesser
+      clearTimeout(this.gracePeriodTimers.get(round.id));
+      this.gracePeriodTimers.delete(round.id);
+      // End the round with a draw (null winner)
+      this.endRound(round, null);
+    } else {
+      // This is the first correct guess. Start a grace period timer.
+      this.logger.log(`First correct guess by ${guesser.username}. Starting draw grace period.`);
+      this.firstCorrectGuessers.set(round.id, guesser);
+      const timer = setTimeout(() => {
+        this.logger.log(`Grace period ended. ${guesser.username} is the sole winner.`);
+        this.endRound(round, guesser);
+      }, DRAW_GRACE_PERIOD_MS);
+      this.gracePeriodTimers.set(round.id, timer);
+    }
+  }
+
+  // public async endRound(round: Round, winner: Player | null) {
+  //   if (round.status !== 'ongoing') return;
+
+  //   // Clean up the guess tracking map for this round.
+  //   this.guessesThisTick.delete(round.id);
+
+  //   round.status = 'finished';
+  //   round.winner = winner;
+  //   await this.roundRepository.save(round);
+
+  //   const matchRoom = `match_${round.match.id}`;
+  //   this.gameGateway.server.to(matchRoom).emit('roundEnd', {
+  //     winner: winner ? winner.username : null,
+  //     secretWord: round.secretWord,
+  //   });
+
+  //   this.logger.log(`Round ${round.id} ended. Winner: ${winner?.username || 'None'}`);
+  //   // Future: Check win condition here
+  // }
   public async endRound(round: Round, winner: Player | null) {
     if (round.status !== 'ongoing') return;
+    
+    // Clean up all tracking maps for this round
+    this.gracePeriodTimers.delete(round.id);
+    this.firstCorrectGuessers.delete(round.id);
+    this.guessesThisTick.delete(round.id);
 
     round.status = 'finished';
     round.winner = winner;
@@ -101,9 +160,17 @@ export class RoundService {
       winner: winner ? winner.username : null,
       secretWord: round.secretWord,
     });
-    
-    this.logger.log(`Round ${round.id} ended. Winner: ${winner?.username || 'None'}`);
-    // Future: Check win condition here
+    this.logger.log(`Round ${round.id} ended. Winner: ${winner?.username || 'None (Draw)'}`);
+  }
+
+  public async forceStopRound(roundId: string) {
+    const round = await this.getActiveRoundById(roundId);
+    if (round) {
+        this.logger.log(`Force stopping round ${round.id} due to forfeit.`);
+        round.status = 'finished'; // Changing the status is enough to stop the setTimeout loop
+        await this.roundRepository.save(round);
+        this.guessesThisTick.delete(round.id); // Clean up memory
+    }
   }
 
   public async getActiveRoundForMatch(matchId: string): Promise<Round | null> {
@@ -112,11 +179,23 @@ export class RoundService {
       relations: ['match'],
     });
   }
-  
+
   private async getActiveRoundById(roundId: string): Promise<Round | null> {
-      return this.roundRepository.findOne({
-          where: { id: roundId, status: 'ongoing' },
-          relations: ['match']
-      });
+    return this.roundRepository.findOne({
+      where: { id: roundId, status: 'ongoing' },
+      relations: ['match'],
+    });
+  }
+  
+  // New method to be called by GuessService
+  public canPlayerGuess(roundId: string, playerId: string): boolean {
+    const playersWhoGuessed = this.guessesThisTick.get(roundId);
+    // If the Set exists, check if the player is NOT in it.
+    return playersWhoGuessed ? !playersWhoGuessed.has(playerId) : false;
+  }
+
+  // New method to be called by GuessService
+  public recordGuess(roundId: string, playerId: string) {
+    this.guessesThisTick.get(roundId)?.add(playerId);
   }
 }

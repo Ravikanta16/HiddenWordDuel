@@ -31,21 +31,24 @@ let GuessService = GuessService_1 = class GuessService {
         try {
             const round = await this.roundService.getActiveRoundForMatch(matchId);
             if (!round) {
-                this.logger.warn(`No active round found for match ${matchId}`);
+                this.logger.warn(`No active round for guess attempt in match ${matchId}`);
                 return { isCorrect: false, secretWord: '' };
             }
-            const normalizedGuess = word.toUpperCase().trim();
-            const normalizedSecret = round.secretWord.toUpperCase().trim();
+            if (!this.roundService.canPlayerGuess(round.id, player.id)) {
+                this.logger.warn(`Player ${player.username} tried to guess more than once per tick.`);
+                return { isCorrect: false, secretWord: '' };
+            }
+            this.roundService.recordGuess(round.id, player.id);
+            const isCorrect = round.secretWord.toUpperCase() === word.toUpperCase().trim();
             const guess = this.guessRepository.create({
                 player,
                 round,
-                word: normalizedGuess,
+                word,
             });
             await this.guessRepository.save(guess);
-            const isCorrect = normalizedSecret === normalizedGuess;
-            this.logger.log(`Player ${player.username} guessed "${word}" - ${isCorrect ? 'CORRECT' : 'INCORRECT'}`);
             if (isCorrect) {
-                await this.roundService.endRound(round, player);
+                this.logger.log(`Player ${player.username} guessed correctly! Initiating end of round.`);
+                this.roundService.initiateRoundEnd(round, player);
             }
             return { isCorrect, secretWord: round.secretWord };
         }
