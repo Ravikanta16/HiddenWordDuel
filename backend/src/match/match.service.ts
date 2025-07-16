@@ -18,6 +18,8 @@ export class MatchService {
   constructor(
     @InjectRepository(Match)
     private matchRepository: Repository<Match>,
+    @InjectRepository(Player)
+    private playerRepository: Repository<Player>,
     private roundService: RoundService,
     @Inject(forwardRef(() => GameService))
     private gameService: GameService,
@@ -73,6 +75,9 @@ export class MatchService {
     match.status = 'completed';
     match.winnerId = winningPlayer.id;
     await this.matchRepository.save(match);
+    winningPlayer.totalWins++;
+    await this.playerRepository.save(winningPlayer);
+    
     
     // Announce the winner
     const matchRoom = `match_${matchId}`;

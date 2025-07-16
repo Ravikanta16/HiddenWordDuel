@@ -11,6 +11,12 @@ const WORD_LIST = ['ABCD', 'EFGH', 'IJKL', 'MNOP', 'QRST', 'UVWX', 'YZ'];
 const TICK_RATE_MS = 10000;
 const DRAW_GRACE_PERIOD_MS = 2000;
 
+const socket_constants = {
+  newRound: 'newRound',
+  letterReveal: 'letterReveal',
+  roundEnd: 'roundEnd',
+}
+
 @Injectable()
 export class RoundService {
   private readonly logger = new Logger(RoundService.name);
@@ -26,6 +32,8 @@ export class RoundService {
   constructor(
     @InjectRepository(Round)
     private roundRepository: Repository<Round>,
+    @InjectRepository(Player)
+    private playerRepository: Repository<Player>,
     @Inject(forwardRef(() => GameGateway))
     private gameGateway: GameGateway,
   ) {}
@@ -60,7 +68,7 @@ export class RoundService {
     this.guessesThisTick.set(round.id, new Set());
     const matchRoom = `match_${round.match.id}`;
 
-    this.gameGateway.server.to(matchRoom).emit('newRound', {
+    this.gameGateway.server.to(matchRoom).emit(socket_constants.newRound, {
       roundId: round.id,
       wordLength: round.secretWord.length,
       roundNumber: roundNumber,
@@ -104,16 +112,12 @@ export class RoundService {
   }
 
   public initiateRoundEnd(round: Round, guesser: Player) {
-    // If a grace period timer is already running, this is the second correct guess.
     if (this.gracePeriodTimers.has(round.id)) {
       this.logger.log(`Second correct guess received for round ${round.id}. It's a draw!`);
-      // Clear the pending timer for the first guesser
       clearTimeout(this.gracePeriodTimers.get(round.id));
       this.gracePeriodTimers.delete(round.id);
-      // End the round with a draw (null winner)
       this.endRound(round, null);
-    } else {
-      // This is the first correct guess. Start a grace period timer.
+    } else { 
       this.logger.log(`First correct guess by ${guesser.username}. Starting draw grace period.`);
       this.firstCorrectGuessers.set(round.id, guesser);
       const timer = setTimeout(() => {
@@ -124,25 +128,6 @@ export class RoundService {
     }
   }
 
-  // public async endRound(round: Round, winner: Player | null) {
-  //   if (round.status !== 'ongoing') return;
-
-  //   // Clean up the guess tracking map for this round.
-  //   this.guessesThisTick.delete(round.id);
-
-  //   round.status = 'finished';
-  //   round.winner = winner;
-  //   await this.roundRepository.save(round);
-
-  //   const matchRoom = `match_${round.match.id}`;
-  //   this.gameGateway.server.to(matchRoom).emit('roundEnd', {
-  //     winner: winner ? winner.username : null,
-  //     secretWord: round.secretWord,
-  //   });
-
-  //   this.logger.log(`Round ${round.id} ended. Winner: ${winner?.username || 'None'}`);
-  //   // Future: Check win condition here
-  // }
   public async endRound(round: Round, winner: Player | null) {
     if (round.status !== 'ongoing') return;
     
@@ -153,6 +138,11 @@ export class RoundService {
 
     round.status = 'finished';
     round.winner = winner;
+    if (winner) {
+      winner.totalWins++;
+      await this.playerRepository.save(winner);
+    }
+
     await this.roundRepository.save(round);
 
     const matchRoom = `match_${round.match.id}`;

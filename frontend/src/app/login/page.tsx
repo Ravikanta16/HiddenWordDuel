@@ -31,6 +31,9 @@ export default function LoginPage() {
      if(response.status === 201){
         const data=response.data;
         localStorage.setItem('jwt_token', data.access_token);
+        localStorage.setItem('username', username);
+        localStorage.setItem('totalwins', data.player.totalWins.toString());
+        console.log('username and totalwins', username, data.player.totalWins);
         connect();
         console.log('Login successful:', data);
         router.push('/game');
@@ -46,7 +49,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
         <h1 className="mb-6 text-center text-3xl font-bold text-gray-800">
-          Login to Hidden Word Duel
+          Login
         </h1>
         
         <form onSubmit={handleSubmit}>

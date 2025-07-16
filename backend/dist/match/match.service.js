@@ -19,18 +19,21 @@ const typeorm_1 = require("@nestjs/typeorm");
 const game_gateway_1 = require("../game/game.gateway");
 const game_service_1 = require("../game/game.service");
 const match_entity_1 = require("../entities/match.entity");
+const player_entity_1 = require("../entities/player.entity");
 const typeorm_2 = require("typeorm");
 const round_service_1 = require("../round/round.service");
 const RECONNECTION_TIMEOUT_MS = 10000;
 let MatchService = MatchService_1 = class MatchService {
     matchRepository;
+    playerRepository;
     roundService;
     gameService;
     gameGateway;
     logger = new common_1.Logger(MatchService_1.name);
     forfeitTimers = new Map();
-    constructor(matchRepository, roundService, gameService, gameGateway) {
+    constructor(matchRepository, playerRepository, roundService, gameService, gameGateway) {
         this.matchRepository = matchRepository;
+        this.playerRepository = playerRepository;
         this.roundService = roundService;
         this.gameService = gameService;
         this.gameGateway = gameGateway;
@@ -72,6 +75,8 @@ let MatchService = MatchService_1 = class MatchService {
         match.status = 'completed';
         match.winnerId = winningPlayer.id;
         await this.matchRepository.save(match);
+        winningPlayer.totalWins++;
+        await this.playerRepository.save(winningPlayer);
         const matchRoom = `match_${matchId}`;
         this.gameGateway.server.to(matchRoom).emit('gameOver', {
             winner: winningPlayer.username,
@@ -96,9 +101,11 @@ exports.MatchService = MatchService;
 exports.MatchService = MatchService = MatchService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(match_entity_1.Match)),
-    __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => game_service_1.GameService))),
-    __param(3, (0, common_1.Inject)((0, common_1.forwardRef)(() => game_gateway_1.GameGateway))),
+    __param(1, (0, typeorm_1.InjectRepository)(player_entity_1.Player)),
+    __param(3, (0, common_1.Inject)((0, common_1.forwardRef)(() => game_service_1.GameService))),
+    __param(4, (0, common_1.Inject)((0, common_1.forwardRef)(() => game_gateway_1.GameGateway))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         round_service_1.RoundService,
         game_service_1.GameService,
         game_gateway_1.GameGateway])

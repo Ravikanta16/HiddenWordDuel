@@ -20,18 +20,26 @@ const game_gateway_1 = require("../game/game.gateway");
 const match_entity_1 = require("../entities/match.entity");
 const round_entity_1 = require("../entities/round.entity");
 const typeorm_2 = require("typeorm");
+const player_entity_1 = require("../entities/player.entity");
 const WORD_LIST = ['ABCD', 'EFGH', 'IJKL', 'MNOP', 'QRST', 'UVWX', 'YZ'];
 const TICK_RATE_MS = 10000;
 const DRAW_GRACE_PERIOD_MS = 2000;
+const socket_constants = {
+    newRound: 'newRound',
+    letterReveal: 'letterReveal',
+    roundEnd: 'roundEnd',
+};
 let RoundService = RoundService_1 = class RoundService {
     roundRepository;
+    playerRepository;
     gameGateway;
     logger = new common_1.Logger(RoundService_1.name);
     guessesThisTick = new Map();
     gracePeriodTimers = new Map();
     firstCorrectGuessers = new Map();
-    constructor(roundRepository, gameGateway) {
+    constructor(roundRepository, playerRepository, gameGateway) {
         this.roundRepository = roundRepository;
+        this.playerRepository = playerRepository;
         this.gameGateway = gameGateway;
     }
     async createRound(match) {
@@ -54,7 +62,7 @@ let RoundService = RoundService_1 = class RoundService {
     startRound(round, roundNumber) {
         this.guessesThisTick.set(round.id, new Set());
         const matchRoom = `match_${round.match.id}`;
-        this.gameGateway.server.to(matchRoom).emit('newRound', {
+        this.gameGateway.server.to(matchRoom).emit(socket_constants.newRound, {
             roundId: round.id,
             wordLength: round.secretWord.length,
             roundNumber: roundNumber,
@@ -112,6 +120,10 @@ let RoundService = RoundService_1 = class RoundService {
         this.guessesThisTick.delete(round.id);
         round.status = 'finished';
         round.winner = winner;
+        if (winner) {
+            winner.totalWins++;
+            await this.playerRepository.save(winner);
+        }
         await this.roundRepository.save(round);
         const matchRoom = `match_${round.match.id}`;
         this.gameGateway.server.to(matchRoom).emit('roundEnd', {
@@ -153,8 +165,10 @@ exports.RoundService = RoundService;
 exports.RoundService = RoundService = RoundService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(round_entity_1.Round)),
-    __param(1, (0, common_1.Inject)((0, common_1.forwardRef)(() => game_gateway_1.GameGateway))),
+    __param(1, (0, typeorm_1.InjectRepository)(player_entity_1.Player)),
+    __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => game_gateway_1.GameGateway))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         game_gateway_1.GameGateway])
 ], RoundService);
 //# sourceMappingURL=round.service.js.map

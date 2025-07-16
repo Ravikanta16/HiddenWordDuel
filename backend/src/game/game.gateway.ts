@@ -35,27 +35,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly playerService: PlayerService,
   ) {}
 
-  // async handleConnection(client: AuthenticatedSocket) {
-  //   const token = client.handshake.auth.token;
-  //   if (!token) {
-  //     return client.disconnect();
-  //   }
-  //   try {
-  //     const payload = this.jwtService.verify(token);
-  //     const player = await this.playerService.findById(payload.sub);
-  //     if (!player) {
-  //       return client.disconnect();
-  //     }
-  //     client.player = player;
-  //     this.logger.log(`Client ${client.id} authenticated as ${player.username}`);
-
-  //      // NEW: Check for reconnection after successful authentication
-  //      this.gameService.handleReconnect(player, client);
-  //   } catch (error) {
-  //     return client.disconnect();
-  //   }
-  // }
-
   async handleConnection(client: AuthenticatedSocket) {
     const token = client.handshake.auth.token;
     if (!token) {

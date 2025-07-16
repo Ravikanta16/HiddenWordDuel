@@ -58,7 +58,6 @@ export class GameService {
            playersMap.set(player2Info.player.id, player2Info.socket);
            this.activeMatches.set(match.id, { matchId: match.id, players: playersMap });
 
-           //player1Info.socket.to(matchRoom).emit('matchStart', { matchId: match.id, opponent: player2Info.player.username });
            player1Info.socket.emit('matchStart', { matchId: match.id, opponent: player2Info.player.username });
            player2Info.socket.emit('matchStart', { matchId: match.id, opponent: player1Info.player.username });
         });
@@ -77,10 +76,9 @@ export class GameService {
         // Have the new socket join the match room
         newSocket.join(`match_${matchId}`);
         
-        // Notify MatchService to cancel the forfeit timer
         this.matchService.handlePlayerReconnect(matchId, player.id);
         
-        return; // Player found, no need to check other matches
+        return; 
       }
     }
   }
@@ -98,9 +96,8 @@ export class GameService {
     for (const [matchId, match] of this.activeMatches.entries()) {
       if (match.players.has(disconnectedPlayerId)) {
         this.logger.log(`Player ${disconnectedPlayerId} from match ${matchId} has disconnected.`);
-        // Delegate to MatchService to handle the forfeit logic
         this.matchService.handlePlayerDisconnect(matchId, disconnectedPlayerId);
-        break; // A player can only be in one match at a time
+        break;
       }
     }
   }

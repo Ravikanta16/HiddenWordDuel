@@ -3,24 +3,32 @@
 import { useState, useEffect } from 'react';
 
 interface TimerDisplayProps {
-  // A key that changes to reset the timer
-  resetKey: any; 
-  duration: number; // in seconds
+  resetKey: any;
+  duration: number;
   onTimeout: () => void;
 }
 
 export default function TimerDisplay({ resetKey, duration, onTimeout }: TimerDisplayProps) {
   const [timeLeft, setTimeLeft] = useState(duration);
+  const [isFinished, setIsFinished] = useState(false);
 
   useEffect(() => {
-    setTimeLeft(duration); // Reset time when the key changes
+    if (isFinished) {
+      onTimeout();
+    }
+  }, [isFinished, onTimeout]);
+
+  // This effect manages the countdown interval.
+  useEffect(() => {
+    setTimeLeft(duration);
+    setIsFinished(false);
 
     const interval = setInterval(() => {
       setTimeLeft(prevTime => {
         const newTime = prevTime - 0.1;
         if (newTime <= 0) {
           clearInterval(interval);
-          onTimeout();
+          setIsFinished(true);
           return 0;
         }
         return newTime;
@@ -28,7 +36,7 @@ export default function TimerDisplay({ resetKey, duration, onTimeout }: TimerDis
     }, 100);
 
     return () => clearInterval(interval);
-  }, [resetKey, duration, onTimeout]);
+  }, [resetKey, duration]); 
 
   return (
     <h4 className="text-lg font-semibold">

@@ -5,12 +5,13 @@ import { Repository } from 'typeorm';
 import { Player } from 'src/entities/player.entity';
 export declare class RoundService {
     private roundRepository;
+    private playerRepository;
     private gameGateway;
     private readonly logger;
     private guessesThisTick;
     private gracePeriodTimers;
     private firstCorrectGuessers;
-    constructor(roundRepository: Repository<Round>, gameGateway: GameGateway);
+    constructor(roundRepository: Repository<Round>, playerRepository: Repository<Player>, gameGateway: GameGateway);
     createRound(match: Match): Promise<Round>;
     private startRound;
     private scheduleNextLetterReveal;

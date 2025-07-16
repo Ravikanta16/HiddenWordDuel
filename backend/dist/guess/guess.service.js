@@ -46,6 +46,7 @@ let GuessService = GuessService_1 = class GuessService {
                 word,
             });
             await this.guessRepository.save(guess);
+            await this.roundService.endRound(round, player);
             if (isCorrect) {
                 this.logger.log(`Player ${player.username} guessed correctly! Initiating end of round.`);
                 this.roundService.initiateRoundEnd(round, player);

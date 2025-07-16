@@ -15,7 +15,6 @@ export class AuthController {
   @Post('register')
   async register(@Body() createPlayerDto: CreatePlayerDto) {
     const player = await this.playerService.create(createPlayerDto);
-    // You might want to automatically log in the user here and return a token
     return player;
   }
 
